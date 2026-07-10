@@ -47,7 +47,7 @@ COL_SERVICO = "Qual o Serviço ?"
 COL_CONCLUSAO = "Conclusão"
 
 # ==========================================
-# CONEXÃO E FUNÇÕES DE DADOS
+# CONEXÃO E FUNÇÕES DE DADOS (ATUALIZADA)
 # ==========================================
 @st.cache_resource
 def obter_conexao():
@@ -55,6 +55,8 @@ def obter_conexao():
     try:
         import json
         credenciais = json.loads(st.secrets["credenciais_json"])
+        # Vacina contra erro de assinatura JWT
+        credenciais["private_key"] = credenciais["private_key"].replace("\\n", "\n").replace("\n\n", "\n")
         return ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
     except Exception:
         return ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
@@ -446,7 +448,7 @@ if operador:
                                     status = row['Status']
                                     cor_badge = row['Cor_Status']
                                     
-                                    # LINHA 428 CORRIGIDA COM AS TRÊS ASPAS """
+                                    # Linha de Renderização de Cards do HTML Corrigida
                                     st.markdown(f"""
                                     <div style="border: 1px solid #444; border-radius: 8px; padding: 15px; margin-bottom: 15px; background-color: #1e1e1e;">
                                         <div style="background-color: {cor_badge}; color: white; display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 12px;">
