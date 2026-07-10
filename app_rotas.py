@@ -5,7 +5,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 import re
 import unicodedata
 from datetime import datetime
-from textwrap import wrap
 
 st.set_page_config(page_title="Gestão de Rotas", page_icon="🗺️", layout="wide")
 
@@ -28,29 +27,24 @@ COL_SERVICO = "Qual o Serviço ?"
 COL_CONCLUSAO = "Conclusão"
 
 # ==========================================
-# CONEXÃO E PROCESSAMENTO DE DADOS (CORRIGIDA)
+# CONEXÃO E PROCESSAMENTO DE DADOS (NATIVA STREAMLIT)
 # ==========================================
 @st.cache_resource
 def obter_conexao():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     try:
-        credenciais = dict(st.secrets["gcp"])
+        import json
+        cred_text = st.secrets["gcp_json"]
+        credenciais = json.loads(cred_text)
         
-        # Reconstrói matematicamente a assinatura para evitar o erro JWT
-        chave_bruta = credenciais["private_key"]
-        chave_limpa = chave_bruta.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "")
-        chave_limpa = chave_limpa.replace("\\n", "").replace("\n", "").replace("\r", "").strip()
-        chave_limpa = "".join(chave_limpa.split())
-        
-        chave_perfeita = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(wrap(chave_limpa, 64)) + "\n-----END PRIVATE KEY-----\n"
-        credenciais["private_key"] = chave_perfeita
+        credenciais["private_key"] = credenciais["private_key"].replace("\\n", "\n")
         
         creds = ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
     except Exception as e:
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
         except Exception:
-            st.error(f"Erro de Acesso ao Banco de Dados (Secrets): {e}")
+            st.error(f"Erro de Acesso ao Banco de Dados: {e}")
             st.stop()
     return gspread.authorize(creds)
 
