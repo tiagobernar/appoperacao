@@ -51,11 +51,13 @@ COL_CONCLUSAO = "Conclusão"
 # ==========================================
 @st.cache_resource
 def obter_conexao():
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "credenciais.json", 
-        ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    )
-    return creds
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    try:
+        import json
+        credenciais = json.loads(st.secrets["credenciais_json"])
+        return ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
+    except Exception:
+        return ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
 
 def fazer_upload_foto(foto_bytes):
     try:
@@ -140,7 +142,6 @@ def carregar_tarefas(operador):
         df_respostas[COL_MATRICULA] = df_respostas[COL_MATRICULA].astype(str).apply(lambda x: x.split('.')[0]).str.strip()
         df_respostas = df_respostas[df_respostas[COL_MATRICULA] != ""]
         
-        # Limpa os espaços e preenche vazios gerados pelas execuções
         if "Data Programada" not in df_respostas.columns:
             df_respostas["Data Programada"] = ""
             
@@ -156,7 +157,6 @@ def carregar_tarefas(operador):
         
         data_hoje = datetime.now().strftime("%d/%m/%Y")
         
-        # O ".str.strip()" aqui é a vacina contra espaços digitados sem querer
         df_tarefas = df_respostas[
             (df_respostas["Operador Atribuído"].astype(str).str.strip() == operador.strip()) & 
             (df_respostas["Data Programada"].astype(str).str.strip() == data_hoje)
@@ -425,57 +425,4 @@ if operador:
                     cidades_unicas = sorted(df_tarefas[COL_CIDADE].unique())
                     
                     for cidade in cidades_unicas:
-                        st.markdown(f"<h3 style='color: #4fc3f7; padding-top: 15px; border-bottom: 1px solid #555; padding-bottom: 5px;'>🏙️ {cidade.upper()}</h3>", unsafe_allow_html=True)
-                        
-                        df_cidade = df_tarefas[df_tarefas[COL_CIDADE] == cidade]
-                        bairros_cidade = sorted(df_cidade['Bairro_Exibicao'].unique())
-                        
-                        for bairro in bairros_cidade:
-                            df_bairro = df_cidade[df_cidade['Bairro_Exibicao'] == bairro]
-                            nome_bairro_tela = bairro.title()
-                            
-                            exp_aberto = len(df_bairro[df_bairro['Status'] == 'PENDENTE']) > 0
-                            
-                            with st.expander(f"🗺️ {nome_bairro_tela} ({len(df_bairro)} serviços)", expanded=exp_aberto):
-                                for index, row in df_bairro.iterrows():
-                                    matricula = row[COL_MATRICULA]
-                                    servico = row[COL_SERVICO]
-                                    endereco = row.get('Endereço', 'Endereço não informado')
-                                    status = row['Status']
-                                    cor_badge = row['Cor_Status']
-                                    
-                                    st.markdown(f"""
-                                    <div style="border: 1px solid #444; border-radius: 8px; padding: 15px; margin-bottom: 15px; background-color: #1e1e1e;">
-                                        <div style="background-color: {cor_badge}; color: white; display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 12px;">
-                                            {status}
-                                        </div>
-                                        <div style="font-size: 18px; font-weight: bold; color: white;">Matrícula: {matricula}</div>
-                                        <div style="font-size: 14px; margin-top: 8px; color: #ccc;">{endereco}</div>
-                                        <div style="font-size: 12px; color: #888; margin-top: 12px;">Serviço</div>
-                                        <div style="font-size: 14px; color: white; font-weight: 500;">{servico}</div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    if status == "PENDENTE":
-                                        if st.button("📂 Abrir Ordem", key=f"abrir_{matricula}", use_container_width=True):
-                                            st.session_state.os_aberta = matricula
-                                            st.rerun()
-                                    else:
-                                        st.caption(f"✔️ Serviço registrado como {status.lower()} hoje.")
-                                    
-                                    st.write("") 
-
-                with aba_mapa:
-                    st.info("Visualização geográfica das ordens do dia.")
-                    df_mapa = df_tarefas.dropna(subset=['lat', 'lon']).copy()
-                    if not df_mapa.empty:
-                        st.map(df_mapa, latitude='lat', longitude='lon', color='Cor_Status', use_container_width=True)
-                    else:
-                        st.warning("Nenhuma coordenada válida encontrada para exibir o mapa.")
-            else:
-                st.markdown("""
-                <div style="background-color: #e65100; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #ff9800; margin-bottom: 20px;">
-                    <h2 style="color: white; margin-bottom: 10px;">😎 TÁ DE FOLGA, CHEFIA?</h2>
-                    <p style="color: white; font-size: 18px; margin-bottom: 0;">O roteiro de hoje tá mais limpo que bolso de liso. Não tem ordem programada pra você não. Fica na maciota aí até o controle despachar alguma coisa!</p>
-                </div>
-                """, unsafe_allow_html=True)
+                        st.markdown(f"
