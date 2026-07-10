@@ -31,10 +31,13 @@ COL_CONCLUSAO = "Conclusão"
 # ==========================================
 @st.cache_resource
 def obter_conexao():
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "credenciais.json", 
-        ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    )
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    try:
+        import json
+        credenciais = json.loads(st.secrets["credenciais_json"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
+    except Exception:
+        creds = ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
     return gspread.authorize(creds)
 
 def extrair_bairro_inteligente(row):
@@ -280,20 +283,13 @@ if st.session_state.admin_logado:
                 marcar_todos = st.checkbox("☑️ Selecionar todos os pendentes listados abaixo", key="chk_todos_caixa")
                 df_caixa.insert(0, "✔️", marcar_todos)
                 
-                # ==========================================
-                # LÓGICA DE ORDENAÇÃO INTELIGENTE (DATA/REGIÃO)
-                # ==========================================
-                # Cria uma coluna temporária convertendo para formato de data real
                 df_caixa['Data_Real'] = pd.to_datetime(df_caixa[COL_DATA], dayfirst=True, errors='coerce')
                 
-                # Se não houver filtro de cidade nem de bairro, ordena pelas ordens mais velhas primeiro
                 if cidade_selecionada == "Todas as Cidades" and bairro_selecionado == "Todos os Bairros":
                     df_caixa = df_caixa.sort_values(by=['Data_Real', COL_CIDADE, COL_BAIRRO]).reset_index(drop=True)
                 else:
-                    # Se tiver filtro ativo, foca em agrupar pela região e endereço
                     df_caixa = df_caixa.sort_values(by=[COL_CIDADE, COL_BAIRRO, 'Endereço']).reset_index(drop=True)
                 
-                # Joga fora a coluna temporária de data real
                 df_caixa = df_caixa.drop(columns=['Data_Real'])
                 
                 df_editado_caixa = st.data_editor(
