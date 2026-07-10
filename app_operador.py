@@ -9,6 +9,7 @@ import time
 import streamlit as st
 import re
 import unicodedata
+from textwrap import wrap
 
 st.set_page_config(page_title="GSAN OS", page_icon="📱", layout="centered")
 
@@ -47,17 +48,25 @@ COL_SERVICO = "Qual o Serviço ?"
 COL_CONCLUSAO = "Conclusão"
 
 # ==========================================
-# CONEXÃO E FUNÇÕES DE DADOS (ATUALIZADA)
+# CONEXÃO E FUNÇÕES DE DADOS (CORRIGIDA)
 # ==========================================
 @st.cache_resource
 def obter_conexao():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     try:
-        # Lê nativamente da nova estrutura TOML sem usar JSON
         credenciais = dict(st.secrets["gcp"])
+        
+        # Reconstrói matematicamente a assinatura para evitar o erro JWT
+        chave_bruta = credenciais["private_key"]
+        chave_limpa = chave_bruta.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "")
+        chave_limpa = chave_limpa.replace("\\n", "").replace("\n", "").replace("\r", "").strip()
+        chave_limpa = "".join(chave_limpa.split())
+        
+        chave_perfeita = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(wrap(chave_limpa, 64)) + "\n-----END PRIVATE KEY-----\n"
+        credenciais["private_key"] = chave_perfeita
+        
         return ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
     except Exception as e:
-        # Tenta fallback local, se falhar, mostra o erro verdadeiro
         try:
             return ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
         except Exception:
@@ -120,11 +129,11 @@ def definir_status(row):
     conclusao = ''.join(c for c in unicodedata.normalize('NFD', conclusao_original) if unicodedata.category(c) != 'Mn')
     
     if "EXECUTAD" in conclusao or "FIZ O SERVICO" in conclusao:
-        return "EXECUTADA", "#4CAF50" # Verde
+        return "EXECUTADA", "#4CAF50"
     elif "DEVOLVID" in conclusao:
-        return "DEVOLVIDA", "#F44336" # Vermelho
+        return "DEVOLVIDA", "#F44336"
     else:
-        return "PENDENTE", "#FF9800" # Laranja
+        return "PENDENTE", "#FF9800"
 
 def carregar_tarefas(operador):
     try:
@@ -431,15 +440,15 @@ if operador:
                     
                     cidades_unicas = sorted(df_tarefas[COL_CIDADE].unique())
                     
-                    for cidade in cidades_unicas:
-                        st.markdown(f"<h3 style='color: #4fc3f7; padding-top: 15px; border-bottom: 1px solid #555; padding-bottom: 5px;'>🏙️ {cidade.upper()}</h3>", unsafe_allow_html=True)
+                    for city in cidades_unicas:
+                        st.markdown(f"<h3 style='color: #4fc3f7; padding-top: 15px; border-bottom: 1px solid #555; padding-bottom: 5px;'>🏙️ {city.upper()}</h3>", unsafe_allow_html=True)
                         
-                        df_cidade = df_tarefas[df_tarefas[COL_CIDADE] == cidade]
+                        df_cidade = df_tarefas[df_tarefas[COL_CIDADE] == city]
                         bairros_cidade = sorted(df_cidade['Bairro_Exibicao'].unique())
                         
-                        for bairro in bairros_cidade:
-                            df_bairro = df_cidade[df_cidade['Bairro_Exibicao'] == bairro]
-                            nome_bairro_tela = bairro.title()
+                        for b in bairros_cidade:
+                            df_bairro = df_cidade[df_cidade['Bairro_Exibicao'] == b]
+                            nome_bairro_tela = b.title()
                             
                             exp_aberto = len(df_bairro[df_bairro['Status'] == 'PENDENTE']) > 0
                             
