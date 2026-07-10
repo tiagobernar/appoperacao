@@ -53,13 +53,16 @@ COL_CONCLUSAO = "Conclusão"
 def obter_conexao():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     try:
-        import json
-        credenciais = json.loads(st.secrets["credenciais_json"])
-        # Vacina contra erro de assinatura JWT
-        credenciais["private_key"] = credenciais["private_key"].replace("\\n", "\n").replace("\n\n", "\n")
+        # Lê nativamente da nova estrutura TOML sem usar JSON
+        credenciais = dict(st.secrets["gcp"])
         return ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
-    except Exception:
-        return ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
+    except Exception as e:
+        # Tenta fallback local, se falhar, mostra o erro verdadeiro
+        try:
+            return ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
+        except Exception:
+            st.error(f"Erro de Acesso ao Banco de Dados (Secrets): {e}")
+            st.stop()
 
 def fazer_upload_foto(foto_bytes):
     try:
@@ -448,7 +451,6 @@ if operador:
                                     status = row['Status']
                                     cor_badge = row['Cor_Status']
                                     
-                                    # Linha de Renderização de Cards do HTML Corrigida
                                     st.markdown(f"""
                                     <div style="border: 1px solid #444; border-radius: 8px; padding: 15px; margin-bottom: 15px; background-color: #1e1e1e;">
                                         <div style="background-color: {cor_badge}; color: white; display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-bottom: 12px;">
