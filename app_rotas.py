@@ -27,7 +27,7 @@ COL_SERVICO = "Qual o Serviço ?"
 COL_CONCLUSAO = "Conclusão"
 
 # ==========================================
-# CONEXÃO E PROCESSAMENTO DE DADOS
+# CONEXÃO E PROCESSAMENTO DE DADOS (ATUALIZADA)
 # ==========================================
 @st.cache_resource
 def obter_conexao():
@@ -35,6 +35,8 @@ def obter_conexao():
     try:
         import json
         credenciais = json.loads(st.secrets["credenciais_json"])
+        # Vacina contra erro de assinatura JWT
+        credenciais["private_key"] = credenciais["private_key"].replace("\\n", "\n").replace("\n\n", "\n")
         creds = ServiceAccountCredentials.from_json_keyfile_dict(credenciais, scope)
     except Exception:
         creds = ServiceAccountCredentials.from_json_keyfile_name("credenciais.json", scope)
@@ -283,6 +285,7 @@ if st.session_state.admin_logado:
                 marcar_todos = st.checkbox("☑️ Selecionar todos os pendentes listados abaixo", key="chk_todos_caixa")
                 df_caixa.insert(0, "✔️", marcar_todos)
                 
+                # Ordenação cronológica inteligente (Visão da mais antiga para a mais recente)
                 df_caixa['Data_Real'] = pd.to_datetime(df_caixa[COL_DATA], dayfirst=True, errors='coerce')
                 
                 if cidade_selecionada == "Todas as Cidades" and bairro_selecionado == "Todos os Bairros":
@@ -331,7 +334,7 @@ if st.session_state.admin_logado:
         with aba_pasta_operadores:
             st.sidebar.header("📂 Visualizar Pasta")
             
-            operadores_com_servico = sorted([op for op in df["Operador Atribuído"].unique() if op.strip() != ""])
+            operadores_com_servico = sorted([op for op in df["Operador Atribuído"] if op.strip() != ""])
             
             if operadores_com_servico:
                 operador_pasta = st.sidebar.radio("Ver tarefas de:", operadores_com_servico, key="op_pasta")
